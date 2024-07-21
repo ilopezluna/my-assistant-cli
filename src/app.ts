@@ -1,25 +1,41 @@
-import { CloudflaredContainer } from "./cloudflared";
 import { OllamaContainer } from "@testcontainers/ollama";
+import axios from "axios";
 
-const init = async () => {
-    console.log('Starting containers...');
+const startContainer = async (image: string): Promise<string> => {
+    const ollama = await new OllamaContainer(image).withReuse().start();
+    return ollama.getEndpoint();
+}
+
+const generate = async (url: string, prompt: string) => {
+    const tagsResponse = await axios.get(`${url}/api/tags`);
+    const model = tagsResponse.data.models[0].name;
+    const response = await axios.post(`${url}/api/generate`, {
+        model, stream: true, prompt
+    }, {
+        responseType: 'stream'
+    });
+    const stream = response.data;
+    stream.on('data', data => {
+        process.stdout.write(JSON.parse(data).response);
+    });
+
+    stream.on('end', () => {
+        process.exit(0)
+    });
+};
+
+const main = async () => {
+    const args = process.argv.slice(2);
+    if (args.length != 2) {
+        console.error('Usage: npm run start <image> <prompt>');
+        process.exit(1);
+    }
     try {
-        const ollama = await new OllamaContainer("ilopezluna/thebloke_tinyllama-1_1b-chat-v1_0-gguf:tinyllama-1.1b-chat-v1.0.Q4_K_S.gguf_ollama_0.2.1").start();
-        const cloudflared = await new CloudflaredContainer(ollama.getPort()).start();
-        console.log('Containers started');
-        const url = ollama.getEndpoint();
-        const public_url = await cloudflared.getUrl();
-        console.log(`Ollama URL: ${url}`);
-        console.log(`Cloudflared URL: ${public_url}`);
+        const url = await startContainer(args[0]);
+        await generate(url, args[1]);
     } catch (error) {
         console.error(error);
     }
 }
 
-process.on('SIGINT', async () => {
-    console.log('Exiting...');
-    process.exit();
-});
-console.log('Press Ctrl+C to exit...');
-init();
-process.stdin.resume();
+main();
