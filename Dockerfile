@@ -1,14 +1,14 @@
-ARG NODE_VERSION=20.10.0
-
-FROM node:${NODE_VERSION}-alpine AS builder
-WORKDIR /usr/src/app
+FROM golang:1.23rc2-alpine3.20 AS builder
+WORKDIR /app
+COPY go.mod ./
+COPY go.sum ./
+COPY src/main.go ./
+RUN go mod download
 COPY . .
-RUN npm ci
-RUN npm run build
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
-FROM node:${NODE_VERSION}-alpine AS runner
-ENV NODE_ENV production
-WORKDIR /usr/src/app
-COPY --from=builder /usr/src/app/dist ./dist
-COPY --from=builder /usr/src/app/node_modules ./node_modules
-ENTRYPOINT ["node", "dist/app.js"]
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates
+WORKDIR /root/
+COPY --from=builder /app/main .
+ENTRYPOINT ["./main"]
