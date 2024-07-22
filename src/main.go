@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 )
 
 type TagResponse struct {
@@ -27,9 +28,8 @@ type GenerateRequest struct {
 
 func startContainer(image string) (string, error) {
 	ctx := context.Background()
-
 	ollamaContainer, err := tcollama.Run(ctx, image, testcontainers.CustomizeRequestOption(func(req *testcontainers.GenericContainerRequest) error {
-		req.Name = "my-ollama"
+		req.Name = normalizeString(image)
 		req.Reuse = true
 		return nil
 	}))
@@ -38,6 +38,16 @@ func startContainer(image string) (string, error) {
 		return "", err
 	}
 	return ollamaContainer.Endpoint(ctx, "http")
+}
+
+func normalizeString(input string) string {
+	// Define a regular expression that matches any character that is not alphanumeric, _, or -
+	re := regexp.MustCompile(`[^a-zA-Z0-9_-]`)
+
+	// Replace all matches with a dash
+	normalized := re.ReplaceAllString(input, "-")
+
+	return normalized
 }
 
 func generate(url string, prompt string) error {
