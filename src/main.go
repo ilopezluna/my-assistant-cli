@@ -14,6 +14,8 @@ import (
 	"regexp"
 )
 
+var invalidContainerNameChars = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
+
 type TagResponse struct {
 	Models []struct {
 		Name string `json:"name"`
@@ -29,7 +31,7 @@ type GenerateRequest struct {
 func startContainer(image string) (string, error) {
 	ctx := context.Background()
 	ollamaContainer, err := tcollama.Run(ctx, image, testcontainers.CustomizeRequestOption(func(req *testcontainers.GenericContainerRequest) error {
-		req.Name = normalizeString(image)
+		req.Name = invalidContainerNameChars.ReplaceAllString(image, "-")
 		req.Reuse = true
 		return nil
 	}))
@@ -40,25 +42,12 @@ func startContainer(image string) (string, error) {
 	return ollamaContainer.Endpoint(ctx, "http")
 }
 
-func normalizeString(input string) string {
-	// Define a regular expression that matches any character that is not alphanumeric, _, or -
-	re := regexp.MustCompile(`[^a-zA-Z0-9_-]`)
-
-	// Replace all matches with a dash
-	normalized := re.ReplaceAllString(input, "-")
-
-	return normalized
-}
-
 func generate(url string, prompt string) error {
 	tagsResp, err := http.Get(fmt.Sprintf("%s/api/tags", url))
 	if err != nil {
 		return err
 	}
-	defer func(Body io.ReadCloser) {
-		_ = Body.Close()
-	}(tagsResp.Body)
-
+	defer tagsResp.Body.Close()
 	var tags TagResponse
 	if err := json.NewDecoder(tagsResp.Body).Decode(&tags); err != nil {
 		return err
@@ -80,9 +69,7 @@ func generate(url string, prompt string) error {
 	if err != nil {
 		return err
 	}
-	defer func(Body io.ReadCloser) {
-		_ = Body.Close()
-	}(resp.Body)
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to generate: %s", resp.Status)
