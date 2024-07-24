@@ -15,7 +15,10 @@ You can use bash commands to enrich the prompt, for example:
 
 ```bash
 docker run -it --rm -v /var/run/docker.sock:/var/run/docker.sock ilopezluna/my-assistant-cli:nodejs  "ilopezluna/ollama-llama3.1:0.2.8-8b" "I will provide you the contents of the files of a folder, your task is to describe what this folder is about. Here is the content: '$(for file in src/*; do [[ -f "$file" ]] && echo -e "\nContents of $file:" && cat "$file"; done)'"
+```
+Will output something like:
 
+```bash
 Based on the code you provided, this folder is a Node.js application that uses the Ollama Container from Testcontainers and Axios to generate text completions.
 
 Here's a high-level description of what it does:
