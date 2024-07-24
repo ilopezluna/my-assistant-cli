@@ -6,7 +6,7 @@ const startContainer = async (image: string): Promise<string> => {
     return ollama.getEndpoint();
 }
 
-const generate = async (url: string, prompt: string, images?: string[]) => {
+const generateCompletion = async (url: string, prompt: string, images?: string[]) => {
     const tagsResponse = await axios.get(`${url}/api/tags`);
     const model = tagsResponse.data.models[0].name;
     const response = await axios.post(`${url}/api/generate`, {
@@ -33,7 +33,7 @@ const main = async () => {
     try {
         const url = await startContainer(args[0]);
         const images = args.length == 3 ? args[2].split(',') : undefined;
-        await generate(url, args[1], images);
+        await generateCompletion(url, args[1], images);
     } catch (error) {
         console.error(error);
     }
