@@ -6,11 +6,11 @@ const startContainer = async (image: string): Promise<string> => {
     return ollama.getEndpoint();
 }
 
-const generate = async (url: string, prompt: string) => {
+const generate = async (url: string, prompt: string, images?: string[]) => {
     const tagsResponse = await axios.get(`${url}/api/tags`);
     const model = tagsResponse.data.models[0].name;
     const response = await axios.post(`${url}/api/generate`, {
-        model, stream: true, prompt
+        model, stream: true, prompt, images
     }, {
         responseType: 'stream'
     });
@@ -26,13 +26,14 @@ const generate = async (url: string, prompt: string) => {
 
 const main = async () => {
     const args = process.argv.slice(2);
-    if (args.length != 2) {
-        console.error('Usage: npm run start <image> <prompt>');
+    if (args.length != 2 && args.length != 3) {
+        console.error('Usage: npm run start <docker image> <prompt> <optional: comma separated list of images in base64>');
         process.exit(1);
     }
     try {
         const url = await startContainer(args[0]);
-        await generate(url, args[1]);
+        const images = args.length == 3 ? args[2].split(',') : undefined;
+        await generate(url, args[1], images);
     } catch (error) {
         console.error(error);
     }
